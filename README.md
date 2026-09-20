@@ -183,11 +183,39 @@ python main.py "What are the latest breakthroughs in room-temperature supercondu
 - `--max-steps <int>`: Override the step budget (e.g., `--max-steps 5`).
 - `--model <name>`: Specify an alternate model (e.g., `--model openai/gpt-oss-20b`).
 - `--no-stream`: Disable real-time token streaming and wait for batch output.
+- `--web`: Launch the Green & Black Terminal Web Interface directly in your browser.
 
 #### Example:
 ```bash
 python main.py --mock --max-steps 6 "What are the recent advances in solid-state batteries?"
 ```
+
+---
+
+## Minimalist Green & Black Terminal Web Interface
+
+In addition to the interactive CLI, you can launch a retro hacker-style green & black web terminal powered by FastAPI and Server-Sent Events (SSE):
+
+### Launching the Web Interface
+
+Run either command:
+```bash
+python web_app.py
+# Or using the CLI flag:
+python main.py --web
+```
+
+Then open your browser to:
+```
+http://127.0.0.1:8000
+```
+
+### Web Terminal Highlights
+- **Green & Black Phosphor Terminal Aesthetic**: Minimalist, distraction-free retro terminal with deep matrix-green atmospheric gradient on obsidian black.
+- **Real-Time Token-by-Token SSE Streaming**: Displays thoughts, tool actions, and stream token output live without page reloads.
+- **Grounded Citations & Markdown Renderer**: High-contrast `[S1]`, `[S2]` citation badges and structured sources table.
+- **One-Click Presets & Controls**: Pre-configured research topics (Solid State Batteries, Transformer whitepapers, Quantum Computing), step budget selector, and offline Mock Mode toggle.
+- **Copy Markdown**: One-click clipboard export for research synthesis reports.
 
 ---
 

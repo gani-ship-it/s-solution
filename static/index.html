@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LangGraph AI Research Terminal</title>
+  <meta name="description" content="Autonomous AI Research Agent — LangGraph powered terminal interface with real-time streaming and grounded citations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #00ff41;
+      --green-dim: #00a829;
+      --green-dark: #003b10;
+      --green-glow: rgba(0, 255, 65, 0.35);
+      --black: #000000;
+      --near-black: #050805;
+      --amber: #ffaa00;
+      --red: #ff2244;
+      --white: #e8ffe8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--black);
+      color: var(--green);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      font-size: 16px;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── MATRIX RAIN CANVAS ─────────────────────── */
+    #matrixCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      opacity: 0.18;
+    }
+
+    /* ─── BOOT INTRO OVERLAY ─────────────────────── */
+    #bootOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--black);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+    }
+
+    #bootOverlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.8s ease;
+    }
+
+    .boot-container {
+      max-width: 720px;
+      width: 100%;
+    }
+
+    .boot-logo {
+      font-family: 'VT323', monospace;
+      font-size: 52px;
+      color: var(--green);
+      text-shadow: 0 0 20px var(--green-glow), 0 0 40px rgba(0,255,65,0.2);
+      letter-spacing: 4px;
+      margin-bottom: 4px;
+      min-height: 64px;
+    }
+
+    .boot-tagline {
+      font-size: 12px;
+      color: var(--green-dim);
+      letter-spacing: 2px;
+      margin-bottom: 32px;
+      min-height: 18px;
+    }
+
+    .boot-divider {
+      border: none;
+      border-top: 1px solid var(--green-dark);
+      margin: 16px 0;
+    }
+
+    .boot-log {
+      width: 100%;
+      font-size: 13px;
+      line-height: 1.8;
+      overflow: hidden;
+    }
+
+    .boot-entry {
+      display: flex;
+      justify-content: space-between;
+      opacity: 0;
+      transform: translateX(-8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .boot-entry.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .boot-entry .msg { color: var(--green-dim); }
+    .boot-entry .ok  { color: var(--green); font-weight: 700; }
+    .boot-entry .warn { color: var(--amber); }
+    .boot-entry .fail { color: var(--red); }
+
+    .boot-progress-bar {
+      width: 100%;
+      height: 3px;
+      background: var(--green-dark);
+      margin-top: 24px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .boot-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green-glow);
+      transition: width 0.1s linear;
+    }
+
+    .boot-enter-msg {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--green);
+      text-align: center;
+      letter-spacing: 2px;
+      opacity: 0;
+      animation: blink 1s infinite;
+    }
+    .boot-enter-msg.visible { opacity: 1; }
+
+    /* ─── MAIN APP ───────────────────────────────── */
+    #mainApp {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      flex-direction: column;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    #mainApp.visible {
+      opacity: 1;
+    }
+
+    /* Top bar */
+    .topbar {
+      background: #000;
+      border-bottom: 1px solid var(--green-dark);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tb-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .tb-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green-dark);
+      border: 1px solid var(--green-dim);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .tb-dot:hover:nth-child(1) { background: var(--red); }
+    .tb-dot:hover:nth-child(2) { background: var(--amber); }
+    .tb-dot:hover:nth-child(3) { background: var(--green); }
+
+    .topbar-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      letter-spacing: 2px;
+    }
+
+    .topbar-center {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'VT323', monospace;
+      font-size: 22px;
+      color: var(--green);
+      text-shadow: 0 0 8px var(--green-glow);
+      letter-spacing: 3px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--green-dim);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green-glow);
+      animation: pulse 2s infinite;
+    }
+    .status-dot.busy {
+      background: var(--amber);
+      box-shadow: 0 0 6px rgba(255,170,0,0.5);
+      animation: pulseFast 0.7s infinite;
+    }
+
+    /* Toolbar strip */
+    .toolbar {
+      background: #000;
+      border-bottom: 1px solid var(--green-dark);
+      padding: 6px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tool-label { color: var(--green-dim); font-size: 11px; }
+
+    .tb-select {
+      background: #040904;
+      color: var(--green);
+      border: 1px solid var(--green-dark);
+      padding: 3px 8px;
+      font-family: inherit;
+      font-size: 11px;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .tb-checkbox {
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
+    .tb-btn {
+      background: #050b05;
+      color: var(--green-dim);
+      border: 1px solid var(--green-dark);
+      padding: 3px 10px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+    .tb-btn:hover {
+      color: var(--green);
+      border-color: var(--green-dim);
+      background: var(--green-dark);
+    }
+
+    .presets-group {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Main content: split into two panes */
+    .content-area {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Left sidebar — session history */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: #000;
+      border-right: 1px solid var(--green-dark);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 10px 14px;
+      font-size: 11px;
+      color: var(--green-dim);
+      letter-spacing: 2px;
+      border-bottom: 1px solid var(--green-dark);
+      text-transform: uppercase;
+    }
+
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .session-item {
+      padding: 8px 14px;
+      font-size: 11px;
+      color: var(--green-dim);
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+      word-break: break-word;
+    }
+    .session-item:hover {
+      background: #050f05;
+      color: var(--green);
+      border-left-color: var(--green);
+    }
+    .session-item.active {
+      background: #050f05;
+      color: var(--green);
+      border-left-color: var(--green);
+    }
+    .session-item .s-time {
+      display: block;
+      font-size: 10px;
+      color: #006616;
+      margin-top: 2px;
+    }
+
+    .sidebar-footer {
+      padding: 10px 14px;
+      border-top: 1px solid var(--green-dark);
+      font-size: 10px;
+      color: var(--green-dark);
+    }
+
+    .sidebar::-webkit-scrollbar,
+    .session-list::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track,
+    .session-list::-webkit-scrollbar-track { background: #000; }
+    .sidebar::-webkit-scrollbar-thumb,
+    .session-list::-webkit-scrollbar-thumb { background: var(--green-dark); }
+
+    /* Output area */
+    .output-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #010301;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Matrix-like faint scanlines effect */
+    .output-pane::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .terminal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .terminal-body::-webkit-scrollbar { width: 6px; }
+    .terminal-body::-webkit-scrollbar-track { background: #000; }
+    .terminal-body::-webkit-scrollbar-thumb { background: var(--green-dark); }
+
+    /* ─── LOG LINES ──────────────────────────────── */
+    .log-line {
+      word-break: break-word;
+      white-space: pre-wrap;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .log-time  { color: #008830; margin-right: 8px; font-size: 12px; }
+    .log-step  { color: var(--amber); font-weight: 700; margin-top: 14px; margin-bottom: 6px; letter-spacing: 1px; font-size: 15px; }
+    .log-thought { color: #88ffaa; font-style: italic; font-size: 14px; line-height: 1.7; }
+    .log-tool  { color: var(--green); font-weight: 700; }
+    .log-ok    { color: var(--green); }
+    .log-fail  { color: var(--red); }
+    .log-warn  { color: var(--amber); }
+    .log-stream { color: #d8ffdc; font-size: 15px; line-height: 1.8; }
+    .log-sys   { color: #00a030; font-size: 14px; }
+
+    .separator {
+      color: var(--green-dark);
+      font-size: 12px;
+      margin: 6px 0;
+      letter-spacing: 1px;
+    }
+
+    /* ─── CARD BOXES ─────────────────────────────── */
+    .card-box {
+      border: 1px solid var(--green-dark);
+      background: #010501;
+      padding: 12px 16px;
+      margin: 8px 0;
+      border-left: 3px solid var(--green);
+      font-size: 14px;
+    }
+
+    /* ─── REPORT BOX ─────────────────────────────── */
+    .report-box {
+      border: 1px solid var(--green);
+      background: #010801;
+      padding: 22px 24px;
+      margin: 14px 0;
+      box-shadow: 0 0 24px rgba(0, 255, 65, 0.08), inset 0 0 40px rgba(0,0,0,0.5);
+      color: #e8ffea;
+      font-size: 15px;
+      line-height: 1.85;
+    }
+
+    /* Markdown-rendered content inside report */
+    .report-content h1 {
+      color: var(--green);
+      font-size: 20px;
+      margin: 16px 0 10px;
+      border-bottom: 1px solid var(--green-dark);
+      padding-bottom: 6px;
+      text-shadow: 0 0 8px var(--green-glow);
+      letter-spacing: 1px;
+    }
+    .report-content h2 {
+      color: var(--green);
+      font-size: 17px;
+      margin: 14px 0 8px;
+      border-bottom: 1px solid #001f08;
+      padding-bottom: 4px;
+    }
+    .report-content h3 {
+      color: #66ff88;
+      font-size: 15px;
+      margin: 12px 0 6px;
+    }
+    .report-content p {
+      margin-bottom: 12px;
+      color: #e8ffea;
+    }
+    .report-content ul, .report-content ol {
+      margin: 8px 0 12px 24px;
+      color: #e8ffea;
+    }
+    .report-content li {
+      margin-bottom: 6px;
+      line-height: 1.8;
+    }
+    .report-content strong, .report-content b {
+      color: #ffffff;
+      font-weight: 700;
+    }
+    .report-content em, .report-content i {
+      color: #88ffaa;
+      font-style: italic;
+    }
+    .report-content code {
+      background: #001a08;
+      color: var(--green);
+      padding: 1px 6px;
+      border: 1px solid var(--green-dark);
+      font-size: 13px;
+    }
+    .report-content blockquote {
+      border-left: 3px solid var(--green-dim);
+      margin: 8px 0;
+      padding: 4px 12px;
+      color: #88ffaa;
+      font-style: italic;
+    }
+
+    .citation-tag {
+      background: #002a10;
+      color: var(--green);
+      padding: 2px 6px;
+      border: 1px solid var(--green-dim);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    /* ─── SOURCE TABLE ───────────────────────────── */
+    .source-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .source-table th, .source-table td {
+      border: 1px solid var(--green-dark);
+      padding: 8px 12px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .source-table th {
+      background: #020e02;
+      color: var(--green);
+      letter-spacing: 1px;
+      font-size: 12px;
+    }
+    .source-table a { color: #66ff88; text-decoration: underline; }
+    .source-table a:hover { color: var(--white); }
+
+    /* ─── COPY BTN ───────────────────────────────── */
+    .copy-btn {
+      background: #020a02;
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 4px 12px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      float: right;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { background: var(--green); color: #000; }
+
+    /* ─── INPUT BAR ──────────────────────────────── */
+    .input-bar {
+      background: #000;
+      border-top: 1px solid var(--green-dark);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 3;
+    }
+
+    .prompt-ps1 {
+      color: var(--green);
+      font-weight: 700;
+      white-space: nowrap;
+      text-shadow: 0 0 6px var(--green-glow);
+      font-size: 14px;
+    }
+
+    .prompt-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ccffcc;
+      font-family: inherit;
+      font-size: 14px;
+      caret-color: var(--green);
+    }
+    .prompt-input::placeholder { color: #003d12; }
+
+    .run-btn {
+      background: #050f05;
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-family: inherit;
+      padding: 7px 18px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .run-btn:hover:not(:disabled) {
+      background: var(--green);
+      color: #000;
+      box-shadow: 0 0 12px var(--green-glow);
+    }
+    .run-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .stop-btn {
+      background: #1a0005;
+      border: 1px solid #882233;
+      color: #ff4455;
+      font-family: inherit;
+      padding: 7px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      display: none;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    .stop-btn.visible { display: block; }
+    .stop-btn:hover { background: var(--red); color: #fff; }
+
+    /* ─── ANIMATIONS ─────────────────────────────── */
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    @keyframes pulseFast {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .log-line.new {
+      animation: fadeInUp 0.2s ease forwards;
+    }
+
+    /* Banner on startup */
+    .banner-art {
+      color: var(--green-dim);
+      font-size: 12px;
+      margin-bottom: 8px;
+      white-space: pre;
+      text-shadow: 0 0 4px rgba(0,255,65,0.2);
+    }
+
+    /* Scrollbar for sidebar */
+    .sidebar-scrollable {
+      overflow-y: auto;
+    }
+
+    /* ─── RESPONSIVE ─────────────────────────────── */
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .topbar-center { font-size: 16px; }
+    }
+
+    /* ─── PDF EXPORT BUTTON ──────────────────────── */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      float: right;
+      margin-bottom: 2px;
+    }
+    .pdf-btn {
+      background: #0a1a00;
+      border: 1px solid var(--green-dim);
+      color: var(--green-dim);
+      padding: 4px 12px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+    }
+    .pdf-btn:hover {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #000;
+    }
+
+    /* ─── PRINT / PDF STYLES ────────────────────── */
+    @media print {
+      /* Hide everything except the print container */
+      body > *:not(#pdfPrintFrame) { display: none !important; }
+      #pdfPrintFrame {
+        display: block !important;
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: #fff;
+        color: #000;
+        padding: 32px 40px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Matrix Rain Canvas -->
+<canvas id="matrixCanvas"></canvas>
+
+<!-- ─── BOOT INTRO ──────────────────────────────── -->
+<div id="bootOverlay">
+  <div class="boot-container">
+    <div class="boot-logo" id="bootLogo">_</div>
+    <div class="boot-tagline" id="bootTagline"></div>
+    <hr class="boot-divider">
+    <div class="boot-log" id="bootLog"></div>
+    <div class="boot-progress-bar">
+      <div class="boot-progress-fill" id="bootProgress"></div>
+    </div>
+    <div class="boot-enter-msg" id="bootEnterMsg">[ PRESS ENTER OR CLICK TO LAUNCH ]</div>
+  </div>
+</div>
+
+<!-- ─── MAIN APPLICATION ────────────────────────── -->
+<div id="mainApp">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="tb-dots">
+        <span class="tb-dot"></span>
+        <span class="tb-dot"></span>
+        <span class="tb-dot"></span>
+      </div>
+      <span class="topbar-title">LANGGRAPH-AGENT v2.0</span>
+    </div>
+    <div class="topbar-center">[ AI RESEARCH TERMINAL ]</div>
+    <div class="topbar-right">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">READY</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="tool-group">
+      <label class="tool-label" for="mockToggle">
+        <input type="checkbox" id="mockToggle" class="tb-checkbox"> MOCK MODE
+      </label>
+    </div>
+    <div class="tool-group">
+      <span class="tool-label">BUDGET:</span>
+      <select id="maxSteps" class="tb-select">
+        <option value="6">06 STEPS</option>
+        <option value="8" selected>08 STEPS</option>
+        <option value="10">10 STEPS</option>
+        <option value="12">12 STEPS</option>
+      </select>
+    </div>
+    <button class="tb-btn" onclick="clearTerminal()">[CLR]</button>
+    <button class="tb-btn" onclick="scrollToBottom()">[↓ END]</button>
+
+    <div class="presets-group">
+      <span class="tool-label">PRESETS ▶</span>
+      <button class="tb-btn" onclick="setQuery('What are the latest breakthroughs in solid state batteries?')">BATTERIES</button>
+      <button class="tb-btn" onclick="setQuery('What is the Transformer architecture in attention is all you need?')">TRANSFORMER</button>
+      <button class="tb-btn" onclick="setQuery('Explain how quantum computing achieves fault tolerance.')">QUANTUM</button>
+      <button class="tb-btn" onclick="setQuery('What are the latest advances in nuclear fusion energy research?')">FUSION</button>
+    </div>
+  </div>
+
+  <!-- Content Area -->
+  <div class="content-area">
+
+    <!-- Left Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">// SESSION LOG</div>
+      <div class="session-list" id="sessionList">
+        <div style="padding: 20px 14px; font-size: 11px; color: #003a10;">No sessions yet.</div>
+      </div>
+      <div class="sidebar-footer">
+        SESSIONS ARE LOCAL &amp; EPHEMERAL<br>
+        REFRESH CLEARS HISTORY
+      </div>
+    </div>
+
+    <!-- Main Output Pane -->
+    <div class="output-pane">
+      <div class="terminal-body" id="outputArea">
+        <div class="banner-art" id="welcomeBanner"></div>
+        <div class="log-line log-sys" id="sysReadyMsg"></div>
+      </div>
+
+      <!-- Input Bar -->
+      <div class="input-bar">
+        <span class="prompt-ps1">researcher@langgraph:~$</span>
+        <input type="text" id="queryInput" class="prompt-input"
+               placeholder="type your research query and press enter..."
+               autocomplete="off" autofocus>
+        <button class="run-btn" id="runBtn" onclick="submitQuery()">EXECUTE ⏎</button>
+        <button class="stop-btn" id="stopBtn" onclick="stopQuery()">■ STOP</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  /* ═══════════════════════════════════════════════════════
+   * MATRIX RAIN
+   * ══════════════════════════════════════════════════════= */
+  const canvas = document.getElementById('matrixCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()_+-=[]{}|<>?アイウエオカキクケコサシスセソタチツテトナニヌネノ';
+  const fontSize = 13;
+  let columns = Math.floor(canvas.width / fontSize);
+  let drops = Array(columns).fill(1);
+
+  function drawMatrix() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#00ff41';
+    ctx.font = fontSize + 'px Share Tech Mono';
+
+    for (let i = 0; i < drops.length; i++) {
+      const char = CHARS[Math.floor(Math.random() * CHARS.length)];
+      ctx.fillStyle = Math.random() > 0.92 ? '#aaffbb' : '#00ff41';
+      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+
+  const matrixInterval = setInterval(drawMatrix, 40);
+
+  /* ═══════════════════════════════════════════════════════
+   * BOOT SEQUENCE
+   * ══════════════════════════════════════════════════════= */
+  const BOOT_TITLE    = 'LANGGRAPH AI RESEARCH AGENT';
+  const BOOT_TAGLINE  = '>> AUTONOMOUS · GROUNDED · REAL-TIME STREAMING';
+
+  const BOOT_MESSAGES = [
+    { msg: 'Initializing kernel modules...',         status: 'ok',   delay: 0 },
+    { msg: 'Loading LangGraph state machine...',      status: 'ok',   delay: 160 },
+    { msg: 'Mounting DuckDuckGo search driver...',   status: 'ok',   delay: 280 },
+    { msg: 'Connecting BeautifulSoup HTML parser...',status: 'ok',   delay: 400 },
+    { msg: 'Activating pypdf arXiv reader...',        status: 'ok',   delay: 520 },
+    { msg: 'Detecting LLM provider...',               status: 'ok',   delay: 640 },
+    { msg: 'Loading step budget guardrail [8]...',    status: 'ok',   delay: 740 },
+    { msg: 'Establishing SSE streaming channel...',   status: 'ok',   delay: 860 },
+    { msg: 'Checking GROQ_API_KEY...',                status: 'ok',   delay: 960 },
+    { msg: 'Warming up citation tracker [S1|S2]...',  status: 'ok',   delay: 1060 },
+    { msg: 'Loading mock fallback provider...',       status: 'ok',   delay: 1140 },
+    { msg: 'Mounting web terminal interface...',      status: 'ok',   delay: 1240 },
+    { msg: 'All systems nominal.',                    status: 'ok',   delay: 1360 },
+    { msg: 'Starting Research Terminal...',           status: 'ok',   delay: 1460 },
+  ];
+
+  let bootDone = false;
+
+  function typeText(el, text, speed, onDone) {
+    let i = 0;
+    el.textContent = '';
+    function next() {
+      if (i < text.length) {
+        el.textContent += text[i++];
+        setTimeout(next, speed);
+      } else if (onDone) onDone();
+    }
+    next();
+  }
+
+  function runBoot() {
+    const logoEl   = document.getElementById('bootLogo');
+    const tagEl    = document.getElementById('bootTagline');
+    const logEl    = document.getElementById('bootLog');
+    const progEl   = document.getElementById('bootProgress');
+    const enterEl  = document.getElementById('bootEnterMsg');
+    const overlay  = document.getElementById('bootOverlay');
+
+    // 1. Type logo
+    typeText(logoEl, BOOT_TITLE, 28, () => {
+      // 2. Type tagline
+      typeText(tagEl, BOOT_TAGLINE, 18, () => {
+        // 3. Boot log entries
+        BOOT_MESSAGES.forEach((entry, idx) => {
+          setTimeout(() => {
+            const row = document.createElement('div');
+            row.className = 'boot-entry';
+            const pct = Math.round((idx + 1) / BOOT_MESSAGES.length * 100);
+            row.innerHTML = `<span class="msg">${entry.msg}</span><span class="${entry.status}">[${entry.status.toUpperCase()}]</span>`;
+            logEl.appendChild(row);
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => row.classList.add('visible'));
+            });
+            progEl.style.width = pct + '%';
+
+            if (idx === BOOT_MESSAGES.length - 1) {
+              setTimeout(() => {
+                enterEl.classList.add('visible');
+                bootDone = true;
+              }, 300);
+            }
+          }, entry.delay);
+        });
+      });
+    });
+
+    // Click / keypress to launch early or after done
+    function launch() {
+      if (!bootDone && !enterEl.classList.contains('visible')) return;
+      bootDone = true;
+      overlay.classList.add('hidden');
+      const app = document.getElementById('mainApp');
+      app.style.display = 'flex';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => app.classList.add('visible'));
+      });
+      typeWelcomeBanner();
+      document.removeEventListener('keydown', onKey);
+      overlay.removeEventListener('click', launch);
+      setTimeout(() => overlay.remove(), 900);
+    }
+
+    function onKey(e) { if (e.key === 'Enter' || e.key === ' ') launch(); }
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('click', launch);
+  }
+
+  runBoot();
+
+  /* ═══════════════════════════════════════════════════════
+   * MAIN APP WELCOME BANNER
+   * ══════════════════════════════════════════════════════= */
+  const BANNER = `+───────────────────────────────────────────────────────────────────────────────+
+│  LANGGRAPH AUTONOMOUS AI RESEARCH AGENT  ·  v2.0  ·  TERMINAL WEB INTERFACE  │
+│  Grounded citations [S1][S2]  ·  SSE Streaming  ·  PDF/arXiv support         │
++───────────────────────────────────────────────────────────────────────────────+`;
+
+  function typeWelcomeBanner() {
+    const bannerEl = document.getElementById('welcomeBanner');
+    typeText(bannerEl, BANNER, 4, () => {
+      const sysMsg = document.getElementById('sysReadyMsg');
+      const t = getTimeStr();
+      sysMsg.innerHTML = `<span class="log-time">${t}</span><span class="log-sys">System online. Enter a research query to begin autonomous research. Type --mock to use offline mode.</span>`;
+      document.getElementById('queryInput').focus();
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════
+   * SESSION HISTORY
+   * ══════════════════════════════════════════════════════= */
+  const sessions = [];
+
+  function addSession(question) {
+    const sid = Date.now();
+    sessions.unshift({ sid, question, time: getTimeStr() });
+    renderSessions();
+    return sid;
+  }
+
+  function renderSessions() {
+    const list = document.getElementById('sessionList');
+    list.innerHTML = '';
+    if (sessions.length === 0) {
+      list.innerHTML = '<div style="padding: 20px 14px; font-size:11px; color:#003a10;">No sessions yet.</div>';
+      return;
+    }
+    sessions.forEach((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'session-item' + (i === 0 ? ' active' : '');
+      el.innerHTML = `${s.question.length > 30 ? s.question.slice(0,28)+'...' : s.question}<span class="s-time">${s.time}</span>`;
+      list.appendChild(el);
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════
+   * TERMINAL LOGIC
+   * ══════════════════════════════════════════════════════= */
+  const outputArea   = document.getElementById('outputArea');
+  const queryInput   = document.getElementById('queryInput');
+  const runBtn       = document.getElementById('runBtn');
+  const stopBtn      = document.getElementById('stopBtn');
+  const statusDot    = document.getElementById('statusDot');
+  const statusText   = document.getElementById('statusText');
+
+  let currentStreamSpan = null;
+  let latestReportMd = '';
+  let activeReader = null;
+  let lastQuestion = '';  // Stores the most recent research question for PDF export
+  let lastReportData = null; // Stores {answer, citations, sources, steps, maxSteps, status} for PDF
+
+  function getTimeStr() {
+    const d = new Date();
+    return `[${d.toTimeString().split(' ')[0]}]`;
+  }
+
+  function appendLine(htmlContent, className = '') {
+    const line = document.createElement('div');
+    line.className = `log-line ${className} new`;
+    line.innerHTML = htmlContent;
+    outputArea.appendChild(line);
+    scrollToBottom();
+    return line;
+  }
+
+  function scrollToBottom() {
+    outputArea.scrollTop = outputArea.scrollHeight;
+  }
+
+  function setQuery(q) {
+    queryInput.value = q;
+    queryInput.focus();
+  }
+
+  function clearTerminal() {
+    outputArea.innerHTML = `<div class="banner-art" id="welcomeBanner">${BANNER}</div>`;
+    appendLine(`<span class="log-time">${getTimeStr()}</span><span class="log-sys">Terminal cleared.</span>`);
+  }
+
+  function setStatus(busy) {
+    if (busy) {
+      statusDot.classList.add('busy');
+      statusText.textContent = 'RUNNING';
+      runBtn.disabled = true;
+      queryInput.disabled = true;
+      stopBtn.classList.add('visible');
+    } else {
+      statusDot.classList.remove('busy');
+      statusText.textContent = 'READY';
+      runBtn.disabled = false;
+      queryInput.disabled = false;
+      stopBtn.classList.remove('visible');
+    }
+  }
+
+  queryInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !runBtn.disabled) submitQuery();
+  });
+
+  async function submitQuery() {
+    const question = queryInput.value.trim();
+    if (!question) return;
+
+    const isMock   = document.getElementById('mockToggle').checked;
+    const maxSteps = parseInt(document.getElementById('maxSteps').value);
+
+    setStatus(true);
+    lastQuestion = question;  // Save for PDF export
+    addSession(question);
+
+    appendLine(`<span class="separator">────────────────────────────────────────────────────────────────────</span>`);
+    appendLine(`<span class="log-time">${getTimeStr()}</span><span style="color:var(--green);font-weight:700;">$ research-agent --query "${escapeHtml(question)}" --steps ${maxSteps}${isMock?' --mock':''}</span>`);
+
+    try {
+      const response = await fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, mock: isMock, max_steps: maxSteps })
+      });
+
+      activeReader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await activeReader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop();
+        for (const part of parts) {
+          if (part.startsWith('data: ')) {
+            try {
+              const evt = JSON.parse(part.substring(6));
+              handleEvent(evt);
+            } catch (e) { console.error('Parse err', e, part); }
+          }
+        }
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        appendLine(`<span class="log-time">${getTimeStr()}</span><span class="log-fail">[ERROR] Connection to agent failed: ${escapeHtml(err.message)}</span>`);
+      }
+    } finally {
+      activeReader = null;
+      setStatus(false);
+      queryInput.value = '';
+      queryInput.focus();
+    }
+  }
+
+  function stopQuery() {
+    if (activeReader) {
+      activeReader.cancel();
+      appendLine(`<span class="log-time">${getTimeStr()}</span><span class="log-warn">[ABORTED] Research stopped by user.</span>`);
+    }
+  }
+
+  function handleEvent(event) {
+    const t = getTimeStr();
+    switch (event.type) {
+      case 'step':
+        appendLine(`<div class="log-step">▶  STEP ${String(event.step).padStart(2,'0')} / ${event.max_steps}  ────────────────────────────────────────────────</div>`);
+        break;
+
+      case 'decision': {
+        let details = '';
+        if (event.params) {
+          for (const [k, v] of Object.entries(event.params)) {
+            if (v) details += `\n    ${k}: ${v}`;
+          }
+        }
+        appendLine(`
+          <div class="card-box">
+            <div class="log-thought">💭 ${escapeHtml(event.thought)}</div>
+            <div style="margin-top:5px;"><span class="log-tool">⚡ ACTION:</span> <strong style="color:var(--green);">${event.action}</strong>${details ? `<pre style="color:#006622;margin-top:3px;font-size:11px;">${escapeHtml(details)}</pre>` : ''}</div>
+          </div>`);
+        break;
+      }
+
+      case 'tool_result': {
+        const ok  = event.status === 'success';
+        const emp = event.status === 'empty';
+        const cls  = ok ? 'log-ok' : emp ? 'log-warn' : 'log-fail';
+        const icon = ok ? '✓' : emp ? '⚠' : '✗';
+        const lbl  = ok ? 'SUCCESS' : emp ? 'EMPTY' : 'FAILED';
+        appendLine(`<span class="log-time">${t}</span><span class="${cls}">[${icon}] ${event.action} ${lbl}:</span> ${escapeHtml(event.summary || event.details || '')}`);
+        break;
+      }
+
+      case 'start_stream':
+        appendLine(`<div style="color:var(--amber);font-weight:700;margin-top:10px;letter-spacing:1px;">${t} ▶▶▶ ${escapeHtml(event.title || 'SYNTHESIZING FINAL REPORT (LIVE STREAM)')}</div>`);
+        currentStreamSpan = appendLine('', 'log-stream');
+        break;
+
+      case 'token':
+        if (currentStreamSpan) {
+          currentStreamSpan.textContent += event.token;
+          scrollToBottom();
+        }
+        break;
+
+      case 'complete':
+        currentStreamSpan = null;
+        latestReportMd = event.final_answer || '';
+        renderFinalReport(event.final_answer, event.citations, event.sources, event.steps, event.max_steps, event.status);
+        break;
+
+      case 'error':
+        appendLine(`<span class="log-time">${t}</span><span class="log-fail">[FATAL] ${escapeHtml(event.message)}</span>`);
+        break;
+    }
+  }
+
+  /**
+   * Renders markdown text into styled HTML for the report box.
+   * Handles: ## headings, **bold**, *italic*, bullet lists, numbered lists,
+   * `inline code`, > blockquotes, and [S1] citation tags.
+   */
+  function renderMarkdown(md) {
+    if (!md) return '';
+    const lines = md.split('\n');
+    let html = '';
+    let inUl = false, inOl = false;
+
+    function closeList() {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      if (inOl) { html += '</ol>'; inOl = false; }
+    }
+
+    lines.forEach(rawLine => {
+      // Inline processing helper (applied inside block elements)
+      function inline(text) {
+        return text
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          // Citations first (before other replacements)
+          .replace(/\[(S\d+)\]/g, '<span class="citation-tag">[$1]</span>')
+          // Bold
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/__(.+?)__/g, '<strong>$1</strong>')
+          // Italic
+          .replace(/\*(.+?)\*/g, '<em>$1</em>')
+          .replace(/_(.+?)_/g, '<em>$1</em>')
+          // Inline code
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          // URLs
+          .replace(/(https?:\/\/[^\s<>"']+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+      }
+
+      const line = rawLine;
+
+      // Headings
+      if (/^### (.+)/.test(line)) {
+        closeList();
+        html += `<h3>${inline(line.replace(/^### /,''))}</h3>`;
+      } else if (/^## (.+)/.test(line)) {
+        closeList();
+        html += `<h2>${inline(line.replace(/^## /,''))}</h2>`;
+      } else if (/^# (.+)/.test(line)) {
+        closeList();
+        html += `<h1>${inline(line.replace(/^# /,''))}</h1>`;
+      }
+      // Blockquote
+      else if (/^> (.+)/.test(line)) {
+        closeList();
+        html += `<blockquote>${inline(line.replace(/^> /,''))}</blockquote>`;
+      }
+      // Unordered list
+      else if (/^[\-\*] (.+)/.test(line)) {
+        if (inOl) { html += '</ol>'; inOl = false; }
+        if (!inUl) { html += '<ul>'; inUl = true; }
+        html += `<li>${inline(line.replace(/^[\-\*] /,''))}</li>`;
+      }
+      // Ordered list
+      else if (/^\d+\. (.+)/.test(line)) {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        if (!inOl) { html += '<ol>'; inOl = true; }
+        html += `<li>${inline(line.replace(/^\d+\. /,''))}</li>`;
+      }
+      // Horizontal rule
+      else if (/^[-=]{3,}$/.test(line.trim())) {
+        closeList();
+        html += `<hr style="border:none;border-top:1px solid var(--green-dark);margin:10px 0;">`;
+      }
+      // Empty line — paragraph break
+      else if (line.trim() === '') {
+        closeList();
+        html += '<br>';
+      }
+      // Regular paragraph
+      else {
+        closeList();
+        html += `<p>${inline(line)}</p>`;
+      }
+    });
+
+    closeList();
+    return html;
+  }
+
+  function renderFinalReport(answer, citations, sources, steps, maxSteps, status) {
+    const t = getTimeStr();
+    const cited = citations || [];
+
+    // Save full report data for PDF export
+    lastReportData = { answer, citations: cited, sources, steps, maxSteps, status, time: t, question: lastQuestion };
+    latestReportMd = answer || '';
+
+    // Render the answer with full markdown
+    const renderedAnswer = renderMarkdown(answer || 'No answer was generated.');
+
+    let reportHtml = `
+      <div class="report-box">
+        <div class="btn-row">
+          <button class="pdf-btn" onclick="exportPDF()">&#128196; EXPORT PDF</button>
+          <button class="copy-btn" onclick="copyReport()">[ COPY MARKDOWN ]</button>
+        </div>
+        <div style="font-weight:700;color:var(--green);margin-bottom:16px;letter-spacing:2px;font-size:16px;text-shadow:0 0 8px var(--green-glow);clear:both;">
+          &#9556;&#9552; FINAL RESEARCH REPORT &#9559;
+        </div>
+        <div class="report-content">${renderedAnswer}</div>
+      </div>`;
+
+    if (sources && Object.keys(sources).length > 0) {
+      let rows = '';
+      for (const [sid, s] of Object.entries(sources)) {
+        const isCited = cited.includes(sid);
+        const displayUrl = s.url.length > 65 ? s.url.slice(0, 63) + '…' : s.url;
+        rows += `<tr>
+          <td style="font-weight:700;color:var(--green);">${sid}</td>
+          <td style="color:${isCited?'var(--green)':'#005010'}">${isCited?'✓ YES':'—'}</td>
+          <td style="color:#ccffcc;">${escapeHtml(s.title||'Untitled')}</td>
+          <td><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(displayUrl)}</a></td>
+        </tr>`;
+      }
+      reportHtml += `
+        <div style="margin-top:14px;">
+          <div style="font-size:13px;color:var(--green);letter-spacing:2px;margin-bottom:8px;font-weight:700;">╔═ VERIFIED SOURCES ═╗</div>
+          <table class="source-table">
+            <thead><tr><th>ID</th><th>CITED?</th><th>TITLE</th><th>URL</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    reportHtml += `
+      <div style="color:#009030;font-size:13px;margin-top:14px;letter-spacing:1px;border-top:1px solid var(--green-dark);padding-top:10px;">
+        ▶ Research complete &nbsp;·&nbsp; Steps: ${steps}/${maxSteps} &nbsp;·&nbsp;
+        Status: <span style="color:var(--green);font-weight:700;">${status.toUpperCase()}</span> &nbsp;·&nbsp; ${t}
+      </div>`;
+
+    appendLine(reportHtml);
+    appendLine(`<span class="separator">────────────────────────────────────────────────────────────────────</span>`);
+  }
+
+  function copyReport() {
+    if (latestReportMd) {
+      navigator.clipboard.writeText(latestReportMd)
+        .then(() => appendLine(`<span class="log-time">${getTimeStr()}</span><span class="log-sys">Markdown report copied to clipboard.</span>`));
+    }
+  }
+
+  function exportPDF() {
+    if (!lastReportData) {
+      appendLine(`<span class="log-time">${getTimeStr()}</span><span class="log-warn">[WARN] No report available to export yet.</span>`);
+      return;
+    }
+    const d = lastReportData;
+    const cited = d.citations || [];
+
+    // Build plain-text markdown of the answer (used inside the PDF)
+    const mdAnswer = d.answer || 'No answer generated.';
+
+    // Build sources rows for the PDF table
+    let sourceRows = '';
+    if (d.sources && Object.keys(d.sources).length > 0) {
+      for (const [sid, s] of Object.entries(d.sources)) {
+        const isCited = cited.includes(sid);
+        sourceRows += `<tr>
+          <td style="padding:6px 10px;border:1px solid #ccc;font-weight:bold;">${sid}</td>
+          <td style="padding:6px 10px;border:1px solid #ccc;color:${isCited?'#007700':'#aaa'}">${isCited?'&#10003; YES':'&mdash;'}</td>
+          <td style="padding:6px 10px;border:1px solid #ccc;">${escapeHtml(s.title||'Untitled')}</td>
+          <td style="padding:6px 10px;border:1px solid #ccc;word-break:break-all;font-size:11px;"><a href="${escapeHtml(s.url)}" style="color:#005500;">${escapeHtml(s.url)}</a></td>
+        </tr>`;
+      }
+    }
+
+    // Convert the markdown answer to clean PDF HTML
+    // Simple pass: bold, headings, bullets, citations
+    function mdToPdfHtml(md) {
+      const lines = md.split('\n');
+      let html = '';
+      let inUl = false, inOl = false;
+      const closeList = () => {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        if (inOl) { html += '</ol>'; inOl = false; }
+      };
+      const inl = t => t
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\[(S\d+)\]/g,'<strong style="color:#005500;">[$1]</strong>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g,'<em>$1</em>')
+        .replace(/`([^`]+)`/g,'<code style="background:#f0f0f0;padding:1px 4px;">$1</code>')
+        .replace(/(https?:\/\/[^\s<>"']+)/g,'<a href="$1" style="color:#004488;">$1</a>');
+
+      for (const line of lines) {
+        if (/^### (.+)/.test(line))       { closeList(); html += `<h3 style="margin:12px 0 4px;color:#003300;">${inl(line.replace(/^### /,''))}</h3>`; }
+        else if (/^## (.+)/.test(line))   { closeList(); html += `<h2 style="margin:16px 0 6px;color:#002200;border-bottom:1px solid #aaa;padding-bottom:4px;">${inl(line.replace(/^## /,''))}</h2>`; }
+        else if (/^# (.+)/.test(line))    { closeList(); html += `<h1 style="margin:20px 0 8px;color:#001100;">${inl(line.replace(/^# /,''))}</h1>`; }
+        else if (/^> (.+)/.test(line))    { closeList(); html += `<blockquote style="border-left:3px solid #888;margin:6px 0;padding:4px 10px;color:#555;font-style:italic;">${inl(line.replace(/^> /,''))}</blockquote>`; }
+        else if (/^[\-\*] (.+)/.test(line)) {
+          if (inOl) { html += '</ol>'; inOl = false; }
+          if (!inUl) { html += '<ul style="margin:6px 0 6px 24px;">'; inUl = true; }
+          html += `<li style="margin-bottom:4px;">${inl(line.replace(/^[\-\*] /,''))}</li>`;
+        } else if (/^\d+\. (.+)/.test(line)) {
+          if (inUl) { html += '</ul>'; inUl = false; }
+          if (!inOl) { html += '<ol style="margin:6px 0 6px 24px;">'; inOl = true; }
+          html += `<li style="margin-bottom:4px;">${inl(line.replace(/^\d+\. /,''))}</li>`;
+        } else if (line.trim() === '') {
+          closeList();
+          html += '<br>';
+        } else {
+          closeList();
+          html += `<p style="margin:0 0 10px;">${inl(line)}</p>`;
+        }
+      }
+      closeList();
+      return html;
+    }
+
+    const now = new Date().toLocaleString();
+    const answerHtml = mdToPdfHtml(mdAnswer);
+
+    const printHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Research Report - ${escapeHtml(d.question)}</title>
+  <style>
+    @page { margin: 28mm 22mm; }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #111;
+      background: #fff;
+      line-height: 1.7;
+    }
+    .header-bar {
+      border-bottom: 2px solid #111;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .header-title {
+      font-size: 20px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #000;
+    }
+    .header-meta {
+      font-size: 11px;
+      color: #555;
+      margin-top: 4px;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #333;
+      text-transform: uppercase;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 4px;
+      margin: 20px 0 10px;
+    }
+    .question-box {
+      background: #f6f6f6;
+      border-left: 4px solid #222;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .answer-body {
+      font-size: 13px;
+      line-height: 1.75;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+    th {
+      background: #111;
+      color: #fff;
+      padding: 7px 10px;
+      text-align: left;
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+    td {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f9f9f9; }
+    .footer-bar {
+      margin-top: 28px;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+      font-size: 10px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-bar">
+    <div class="header-title">&#9632; LANGGRAPH AI RESEARCH REPORT</div>
+    <div class="header-meta">Generated: ${now} &nbsp;|&nbsp; Steps: ${d.steps}/${d.maxSteps} &nbsp;|&nbsp; Status: ${d.status.toUpperCase()}</div>
+  </div>
+
+  <div class="section-label">Research Question</div>
+  <div class="question-box">${escapeHtml(d.question)}</div>
+
+  <div class="section-label">Research Report</div>
+  <div class="answer-body">${answerHtml}</div>
+
+  ${sourceRows ? `
+  <div class="section-label">Sources &amp; Citations</div>
+  <table>
+    <thead><tr><th>ID</th><th>Cited?</th><th>Title</th><th>URL</th></tr></thead>
+    <tbody>${sourceRows}</tbody>
+  </table>` : ''}
+
+  <div class="footer-bar">
+    LangGraph Autonomous AI Research Agent &nbsp;|&nbsp; Grounded Citations [S1][S2]... &nbsp;|&nbsp; ${now}
+  </div>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) {
+      appendLine(`<span class="log-time">${getTimeStr()}</span><span class="log-warn">[WARN] Popup blocked. Please allow popups and try again.</span>`);
+      return;
+    }
+    win.document.write(printHtml);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 600);
+    appendLine(`<span class="log-time">${getTimeStr()}</span><span class="log-sys">PDF export dialog opened.</span>`);
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+</script>
+</body>
+</html>
