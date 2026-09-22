@@ -398,19 +398,24 @@ def build_research_agent(
                 json_match = re.search(r"\{.*\}", raw, re.DOTALL)
                 if not json_match:
                     raise ValueError(f"No JSON found in LLM output: {raw[:200]}")
-                data = json.loads(json_match.group(0))
-                break
+                parsed = json.loads(json_match.group(0))
+                if isinstance(parsed, dict):
+                    data = parsed
+                    break
+                raise ValueError(f"LLM returned non-dict JSON: {type(parsed)}")
             except Exception as e:
                 err_msg = str(e)
                 if ("429" in err_msg or "rate_limit" in err_msg.lower()) and attempt < 2:
                     time.sleep(2.0)
                     continue
-                logger.error(f"Reasoning parsing error: {e}")
-                break
-            # Fallback action
+                logger.error(f"Reasoning parsing error (attempt {attempt + 1}): {e}")
+
+        # Fallback if data is still None after all attempts (LLM completely failed / returned null)
+        if not data or not isinstance(data, dict):
+            logger.warning("LLM returned no usable data after all retries — applying safe fallback.")
             if not search_results:
                 data = {
-                    "thought": "Encountered parsing issue, initiating fallback search.",
+                    "thought": "LLM unavailable, initiating fallback search.",
                     "action": "SEARCH",
                     "search_query": state.get("question", ""),
                     "fetch_url": None,
@@ -418,10 +423,10 @@ def build_research_agent(
                     "final_answer": None,
                 }
             elif fetched and len(summaries) < len(fetched):
-                unsum = [sid for sid in fetched.keys() if not any(s['source_id'] == sid for s in summaries)]
+                unsum = [sid for sid in fetched.keys() if not any(s["source_id"] == sid for s in summaries)]
                 target_id = unsum[0] if unsum else list(fetched.keys())[0]
                 data = {
-                    "thought": "Encountered parsing issue, summarising fetched source.",
+                    "thought": "LLM unavailable, summarising fetched source.",
                     "action": "SUMMARISE",
                     "search_query": None,
                     "fetch_url": None,
@@ -430,7 +435,7 @@ def build_research_agent(
                 }
             else:
                 data = {
-                    "thought": "Proceeding to finish with collected evidence.",
+                    "thought": "LLM unavailable, finishing with collected evidence.",
                     "action": "FINISH",
                     "search_query": None,
                     "fetch_url": None,
