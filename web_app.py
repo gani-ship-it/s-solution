@@ -21,7 +21,20 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="LangGraph Research Agent Terminal")
 
-STATIC_DIR = Path(__file__).parent / "static"
+def find_static_dir() -> Path:
+    """Locate static directory across local and serverless execution environments."""
+    candidates = [
+        Path(__file__).resolve().parent / "static",
+        Path(__file__).resolve().parent.parent / "static",
+        Path.cwd() / "static",
+    ]
+    for c in candidates:
+        if c.exists() and (c / "index.html").exists():
+            return c
+    return Path(__file__).resolve().parent / "static"
+
+
+STATIC_DIR = find_static_dir()
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -37,7 +50,9 @@ async def get_index():
     """Serve the terminal web interface."""
     index_file = STATIC_DIR / "index.html"
     if not index_file.exists():
-        raise HTTPException(status_code=404, detail="static/index.html not found.")
+        index_file = find_static_dir() / "index.html"
+        if not index_file.exists():
+            raise HTTPException(status_code=404, detail="static/index.html not found.")
     return HTMLResponse(content=index_file.read_text(encoding="utf-8"))
 
 
