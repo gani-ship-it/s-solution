@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.py": {
-      "includeFiles": "{src/**,static/**,web_app.py}",
+      "includeFiles": "{src/**,static/**,web_app.py,pyproject.toml}",
       "maxDuration": 60,
       "memory": 1024
     }
