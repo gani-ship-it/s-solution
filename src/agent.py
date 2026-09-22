@@ -285,14 +285,17 @@ def build_research_agent(
             # Free-tier Groq model fallback chain (tried in order until one works)
             _OPENAI_PREFIXES = ("gpt-", "o1-", "o3-", "o4-", "text-davinci")
             _GROQ_FALLBACK_CHAIN = [
-                "llama3-70b-8192",
-                "llama3-8b-8192",
-                "gemma2-9b-it",
-                "mixtral-8x7b-32768",
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.8-27b",
+                "allam-2-7b",
             ]
+            # Only remap pure OpenAI cloud model names (not Groq's openai/gpt-oss-* models)
+            _OPENAI_CLOUD_MODELS = {"gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo",
+                                    "gpt-4-turbo", "o1", "o1-mini", "o3", "o3-mini", "o4-mini"}
             model = (
                 cfg.model_name
-                if not any(cfg.model_name.startswith(p) for p in _OPENAI_PREFIXES)
+                if cfg.model_name not in _OPENAI_CLOUD_MODELS
                 else _GROQ_FALLBACK_CHAIN[0]
             )
             logger.info(f"Using Groq LLM provider with model: {model}")
@@ -328,8 +331,8 @@ def build_research_agent(
                                     on_event({"type": "llm_info", "provider": "groq", "model": m})
                             return result
                         except Exception as e:
-                            if "404" in str(e) or "model_not_found" in str(e):
-                                logger.warning(f"Groq model {m!r} not found, trying next fallback...")
+                            if any(code in str(e) for code in ["404", "400", "model_not_found", "model_decommissioned"]):
+                                logger.warning(f"Groq model {m!r} unavailable ({type(e).__name__}), trying next fallback...")
                                 continue
                             raise
                     raise RuntimeError(f"All Groq models failed: {_groq_model_chain}")
