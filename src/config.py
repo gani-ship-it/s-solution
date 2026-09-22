@@ -35,7 +35,7 @@ class Settings:
     llm_provider: str = (os.getenv("LLM_PROVIDER") or "openai").strip().lower()
     openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY") or None
     groq_api_key: Optional[str] = os.getenv("GROQ_API_KEY") or None
-    model_name: str = (os.getenv("MODEL_NAME") or "llama-3.3-70b-versatile").strip()
+    model_name: str = (os.getenv("MODEL_NAME") or "llama3-70b-8192").strip()
     temperature: float = _parse_float(os.getenv("TEMPERATURE"), 0.2)
     max_steps: int = _parse_int(os.getenv("MAX_STEPS"), 8)
     search_provider: str = (os.getenv("SEARCH_PROVIDER") or "duckduckgo").strip().lower()

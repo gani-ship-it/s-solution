@@ -282,24 +282,59 @@ def build_research_agent(
     if llm is None:
         if cfg.llm_provider == "groq" or (cfg.groq_api_key and not cfg.openai_api_key):
             from langchain_openai import ChatOpenAI
-            # Map any OpenAI model names to a current, valid Groq model
+            # Free-tier Groq model fallback chain (tried in order until one works)
             _OPENAI_PREFIXES = ("gpt-", "o1-", "o3-", "o4-", "text-davinci")
-            _DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+            _GROQ_FALLBACK_CHAIN = [
+                "llama3-70b-8192",
+                "llama3-8b-8192",
+                "gemma2-9b-it",
+                "mixtral-8x7b-32768",
+            ]
             model = (
                 cfg.model_name
                 if not any(cfg.model_name.startswith(p) for p in _OPENAI_PREFIXES)
-                else _DEFAULT_GROQ_MODEL
+                else _GROQ_FALLBACK_CHAIN[0]
             )
             logger.info(f"Using Groq LLM provider with model: {model}")
             if on_event:
                 on_event({"type": "llm_info", "provider": "groq", "model": model})
-            llm = ChatOpenAI(
-                model=model,
-                temperature=cfg.temperature,
-                api_key=cfg.groq_api_key,
-                base_url="https://api.groq.com/openai/v1",
-                max_retries=2,
-            )
+
+            def _make_groq_llm(m: str):
+                return ChatOpenAI(
+                    model=m,
+                    temperature=cfg.temperature,
+                    api_key=cfg.groq_api_key,
+                    base_url="https://api.groq.com/openai/v1",
+                    max_retries=2,
+                )
+
+            # Auto-fallback: if the configured model returns 404, try the chain
+            _groq_model_chain = [model] + [m for m in _GROQ_FALLBACK_CHAIN if m != model]
+
+            class _GroqWithFallback:
+                """Wraps ChatOpenAI with automatic model fallback on 404 errors."""
+                def __init__(self):
+                    self._idx = 0
+                    self._client = _make_groq_llm(_groq_model_chain[0])
+
+                def invoke(self, messages):
+                    for i, m in enumerate(_groq_model_chain):
+                        try:
+                            client = _make_groq_llm(m)
+                            result = client.invoke(messages)
+                            if i > 0:
+                                logger.info(f"Groq fallback succeeded with model: {m}")
+                                if on_event:
+                                    on_event({"type": "llm_info", "provider": "groq", "model": m})
+                            return result
+                        except Exception as e:
+                            if "404" in str(e) or "model_not_found" in str(e):
+                                logger.warning(f"Groq model {m!r} not found, trying next fallback...")
+                                continue
+                            raise
+                    raise RuntimeError(f"All Groq models failed: {_groq_model_chain}")
+
+            llm = _GroqWithFallback()
         elif cfg.llm_provider == "openai" and cfg.openai_api_key:
             from langchain_openai import ChatOpenAI
             llm = ChatOpenAI(
