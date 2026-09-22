@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>LangGraph AI Research Terminal</title>
   <meta name="description" content="Autonomous AI Research Agent — LangGraph powered terminal interface with real-time streaming and grounded citations.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,9 +22,18 @@
       --amber: #ffaa00;
       --red: #ff2244;
       --white: #e8ffe8;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     body {
       background: var(--black);
@@ -30,6 +42,7 @@
       font-size: 16px;
       line-height: 1.6;
       min-height: 100vh;
+      min-height: 100dvh;
       overflow: hidden;
     }
 
@@ -40,6 +53,7 @@
       width: 100%; height: 100%;
       z-index: 0;
       opacity: 0.18;
+      pointer-events: none;
     }
 
     /* ─── BOOT INTRO OVERLAY ─────────────────────── */
@@ -52,7 +66,10 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 40px;
+      padding: clamp(16px, 4vw, 40px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      cursor: pointer;
     }
 
     #bootOverlay.hidden {
@@ -68,20 +85,23 @@
 
     .boot-logo {
       font-family: 'VT323', monospace;
-      font-size: 52px;
+      font-size: clamp(28px, 6.5vw, 52px);
       color: var(--green);
       text-shadow: 0 0 20px var(--green-glow), 0 0 40px rgba(0,255,65,0.2);
-      letter-spacing: 4px;
+      letter-spacing: clamp(1px, 0.6vw, 4px);
       margin-bottom: 4px;
-      min-height: 64px;
+      min-height: 48px;
+      line-height: 1.15;
+      word-break: break-word;
     }
 
     .boot-tagline {
-      font-size: 12px;
+      font-size: clamp(10px, 2.5vw, 12px);
       color: var(--green-dim);
-      letter-spacing: 2px;
-      margin-bottom: 32px;
+      letter-spacing: clamp(1px, 0.4vw, 2px);
+      margin-bottom: 24px;
       min-height: 18px;
+      word-break: break-word;
     }
 
     .boot-divider {
@@ -92,7 +112,7 @@
 
     .boot-log {
       width: 100%;
-      font-size: 13px;
+      font-size: clamp(11px, 2.6vw, 13px);
       line-height: 1.8;
       overflow: hidden;
     }
@@ -100,6 +120,7 @@
     .boot-entry {
       display: flex;
       justify-content: space-between;
+      gap: 8px;
       opacity: 0;
       transform: translateX(-8px);
       transition: opacity 0.25s ease, transform 0.25s ease;
@@ -109,10 +130,10 @@
       transform: translateX(0);
     }
 
-    .boot-entry .msg { color: var(--green-dim); }
-    .boot-entry .ok  { color: var(--green); font-weight: 700; }
-    .boot-entry .warn { color: var(--amber); }
-    .boot-entry .fail { color: var(--red); }
+    .boot-entry .msg { color: var(--green-dim); word-break: break-word; }
+    .boot-entry .ok  { color: var(--green); font-weight: 700; white-space: nowrap; }
+    .boot-entry .warn { color: var(--amber); white-space: nowrap; }
+    .boot-entry .fail { color: var(--red); white-space: nowrap; }
 
     .boot-progress-bar {
       width: 100%;
@@ -132,12 +153,13 @@
 
     .boot-enter-msg {
       margin-top: 20px;
-      font-size: 12px;
+      font-size: clamp(11px, 2.5vw, 12px);
       color: var(--green);
       text-align: center;
       letter-spacing: 2px;
       opacity: 0;
       animation: blink 1s infinite;
+      padding: 8px;
     }
     .boot-enter-msg.visible { opacity: 1; }
 
@@ -150,6 +172,8 @@
       flex-direction: column;
       opacity: 0;
       transition: opacity 0.6s ease;
+      height: 100vh;
+      height: 100dvh;
     }
     #mainApp.visible {
       opacity: 1;
@@ -159,18 +183,51 @@
     .topbar {
       background: #000;
       border-bottom: 1px solid var(--green-dark);
-      padding: 8px 20px;
+      padding: 8px clamp(10px, 2.5vw, 20px);
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-shrink: 0;
       position: relative;
+      min-height: 44px;
+      gap: 10px;
     }
 
     .topbar-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .mobile-drawer-btn {
+      display: none;
+      background: #020a02;
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 2px;
+      cursor: pointer;
+      align-items: center;
+      gap: 5px;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+    }
+    .mobile-drawer-btn:hover,
+    .mobile-drawer-btn:active {
+      background: var(--green-dark);
+      border-color: var(--green);
+      color: #fff;
+    }
+    .drawer-badge {
+      background: var(--green-dark);
+      color: var(--green);
+      border: 1px solid var(--green-dim);
+      font-size: 9px;
+      padding: 0 4px;
+      border-radius: 8px;
     }
 
     .tb-dots {
@@ -195,6 +252,7 @@
       font-size: 13px;
       color: var(--green);
       letter-spacing: 2px;
+      white-space: nowrap;
     }
 
     .topbar-center {
@@ -206,20 +264,23 @@
       color: var(--green);
       text-shadow: 0 0 8px var(--green-glow);
       letter-spacing: 3px;
+      pointer-events: none;
+      white-space: nowrap;
     }
 
     .topbar-right {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       font-size: 11px;
       color: var(--green-dim);
+      flex-shrink: 0;
     }
 
     .status-indicator {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
     }
     .status-dot {
       width: 7px; height: 7px;
@@ -238,26 +299,28 @@
     .toolbar {
       background: #000;
       border-bottom: 1px solid var(--green-dark);
-      padding: 6px 20px;
+      padding: 6px clamp(10px, 2.5vw, 20px);
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 14px;
       flex-shrink: 0;
       font-size: 12px;
+      flex-wrap: wrap;
     }
 
     .tool-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      white-space: nowrap;
     }
-    .tool-label { color: var(--green-dim); font-size: 11px; }
+    .tool-label { color: var(--green-dim); font-size: 11px; letter-spacing: 0.5px; }
 
     .tb-select {
       background: #040904;
       color: var(--green);
       border: 1px solid var(--green-dark);
-      padding: 3px 8px;
+      padding: 4px 8px;
       font-family: inherit;
       font-size: 11px;
       border-radius: 2px;
@@ -268,18 +331,21 @@
     .tb-checkbox {
       accent-color: var(--green);
       cursor: pointer;
+      width: 14px;
+      height: 14px;
     }
 
     .tb-btn {
       background: #050b05;
       color: var(--green-dim);
       border: 1px solid var(--green-dark);
-      padding: 3px 10px;
+      padding: 4px 10px;
       font-family: inherit;
       font-size: 11px;
       cursor: pointer;
       border-radius: 2px;
       transition: all 0.15s;
+      white-space: nowrap;
     }
     .tb-btn:hover {
       color: var(--green);
@@ -291,14 +357,21 @@
       margin-left: auto;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      overflow-x: auto;
+      max-width: 100%;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 2px 0;
     }
+    .presets-group::-webkit-scrollbar { display: none; }
 
     /* Main content: split into two panes */
     .content-area {
       flex: 1;
       display: flex;
       overflow: hidden;
+      position: relative;
     }
 
     /* Left sidebar — session history */
@@ -310,6 +383,8 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 20;
     }
 
     .sidebar-header {
@@ -319,12 +394,32 @@
       letter-spacing: 2px;
       border-bottom: 1px solid var(--green-dark);
       text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-close-btn {
+      display: none;
+      background: transparent;
+      border: 1px solid var(--green-dark);
+      color: var(--green-dim);
+      padding: 2px 7px;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+    .sidebar-close-btn:hover {
+      color: var(--red);
+      border-color: var(--red);
     }
 
     .session-list {
       flex: 1;
       overflow-y: auto;
       padding: 8px 0;
+      -webkit-overflow-scrolling: touch;
     }
 
     .session-item {
@@ -336,7 +431,8 @@
       transition: all 0.15s;
       word-break: break-word;
     }
-    .session-item:hover {
+    .session-item:hover,
+    .session-item:active {
       background: #050f05;
       color: var(--green);
       border-left-color: var(--green);
@@ -358,6 +454,7 @@
       border-top: 1px solid var(--green-dark);
       font-size: 10px;
       color: var(--green-dark);
+      line-height: 1.4;
     }
 
     .sidebar::-webkit-scrollbar,
@@ -367,6 +464,19 @@
     .sidebar::-webkit-scrollbar-thumb,
     .session-list::-webkit-scrollbar-thumb { background: var(--green-dark); }
 
+    /* Mobile Backdrop */
+    #sidebarBackdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(2px);
+      z-index: 40;
+    }
+    #sidebarBackdrop.active {
+      display: block;
+    }
+
     /* Output area */
     .output-pane {
       flex: 1;
@@ -375,6 +485,7 @@
       background: #010301;
       overflow: hidden;
       position: relative;
+      min-width: 0;
     }
 
     /* Matrix-like faint scanlines effect */
@@ -396,12 +507,13 @@
     .terminal-body {
       flex: 1;
       overflow-y: auto;
-      padding: 16px 20px;
+      padding: 16px clamp(10px, 2.5vw, 20px);
       display: flex;
       flex-direction: column;
       gap: 2px;
       position: relative;
       z-index: 1;
+      -webkit-overflow-scrolling: touch;
     }
 
     .terminal-body::-webkit-scrollbar { width: 6px; }
@@ -412,53 +524,96 @@
     .log-line {
       word-break: break-word;
       white-space: pre-wrap;
-      font-size: 15px;
+      font-size: clamp(13px, 2.6vw, 15px);
       line-height: 1.7;
     }
 
     .log-time  { color: #008830; margin-right: 8px; font-size: 12px; }
-    .log-step  { color: var(--amber); font-weight: 700; margin-top: 14px; margin-bottom: 6px; letter-spacing: 1px; font-size: 15px; }
-    .log-thought { color: #88ffaa; font-style: italic; font-size: 14px; line-height: 1.7; }
+    .log-step  {
+      color: var(--amber);
+      font-weight: 700;
+      margin-top: 14px;
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+      font-size: clamp(12px, 2.5vw, 15px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .log-step::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 170, 0, 0.4);
+    }
+    .log-thought { color: #88ffaa; font-style: italic; font-size: clamp(12px, 2.4vw, 14px); line-height: 1.7; }
     .log-tool  { color: var(--green); font-weight: 700; }
     .log-ok    { color: var(--green); }
     .log-fail  { color: var(--red); }
     .log-warn  { color: var(--amber); }
-    .log-stream { color: #d8ffdc; font-size: 15px; line-height: 1.8; }
-    .log-sys   { color: #00a030; font-size: 14px; }
+    .log-stream { color: #d8ffdc; font-size: clamp(13px, 2.6vw, 15px); line-height: 1.8; }
+    .log-sys   { color: #00a030; font-size: clamp(12px, 2.4vw, 14px); }
 
     .separator {
       color: var(--green-dark);
       font-size: 12px;
       margin: 6px 0;
       letter-spacing: 1px;
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
     }
 
     /* ─── CARD BOXES ─────────────────────────────── */
     .card-box {
       border: 1px solid var(--green-dark);
       background: #010501;
-      padding: 12px 16px;
+      padding: 12px clamp(10px, 2vw, 16px);
       margin: 8px 0;
       border-left: 3px solid var(--green);
-      font-size: 14px;
+      font-size: clamp(12px, 2.4vw, 14px);
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    .card-box pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-width: 100%;
     }
 
     /* ─── REPORT BOX ─────────────────────────────── */
     .report-box {
       border: 1px solid var(--green);
       background: #010801;
-      padding: 22px 24px;
+      padding: clamp(14px, 3vw, 24px);
       margin: 14px 0;
       box-shadow: 0 0 24px rgba(0, 255, 65, 0.08), inset 0 0 40px rgba(0,0,0,0.5);
       color: #e8ffea;
-      font-size: 15px;
-      line-height: 1.85;
+      font-size: clamp(13px, 2.5vw, 15px);
+      line-height: 1.8;
+    }
+
+    .report-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .report-title {
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 2px;
+      font-size: clamp(13px, 2.8vw, 16px);
+      text-shadow: 0 0 8px var(--green-glow);
     }
 
     /* Markdown-rendered content inside report */
     .report-content h1 {
       color: var(--green);
-      font-size: 20px;
+      font-size: clamp(16px, 3.2vw, 20px);
       margin: 16px 0 10px;
       border-bottom: 1px solid var(--green-dark);
       padding-bottom: 6px;
@@ -467,14 +622,14 @@
     }
     .report-content h2 {
       color: var(--green);
-      font-size: 17px;
+      font-size: clamp(14px, 2.8vw, 17px);
       margin: 14px 0 8px;
       border-bottom: 1px solid #001f08;
       padding-bottom: 4px;
     }
     .report-content h3 {
       color: #66ff88;
-      font-size: 15px;
+      font-size: clamp(13px, 2.5vw, 15px);
       margin: 12px 0 6px;
     }
     .report-content p {
@@ -482,7 +637,7 @@
       color: #e8ffea;
     }
     .report-content ul, .report-content ol {
-      margin: 8px 0 12px 24px;
+      margin: 8px 0 12px clamp(16px, 4vw, 24px);
       color: #e8ffea;
     }
     .report-content li {
@@ -502,7 +657,8 @@
       color: var(--green);
       padding: 1px 6px;
       border: 1px solid var(--green-dark);
-      font-size: 13px;
+      font-size: clamp(11px, 2.3vw, 13px);
+      word-break: break-word;
     }
     .report-content blockquote {
       border-left: 3px solid var(--green-dim);
@@ -518,15 +674,28 @@
       padding: 2px 6px;
       border: 1px solid var(--green-dim);
       font-weight: 700;
-      font-size: 13px;
+      font-size: clamp(11px, 2.3vw, 13px);
+      border-radius: 2px;
+      white-space: nowrap;
     }
 
     /* ─── SOURCE TABLE ───────────────────────────── */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 12px 0;
+      border: 1px solid var(--green-dark);
+    }
+    .table-responsive::-webkit-scrollbar { height: 5px; }
+    .table-responsive::-webkit-scrollbar-track { background: #000; }
+    .table-responsive::-webkit-scrollbar-thumb { background: var(--green-dark); }
+
     .source-table {
       width: 100%;
+      min-width: 480px;
       border-collapse: collapse;
-      margin: 12px 0;
-      font-size: 13px;
+      font-size: clamp(11px, 2.3vw, 13px);
     }
     .source-table th, .source-table td {
       border: 1px solid var(--green-dark);
@@ -538,34 +707,51 @@
       background: #020e02;
       color: var(--green);
       letter-spacing: 1px;
-      font-size: 12px;
+      font-size: 11px;
     }
-    .source-table a { color: #66ff88; text-decoration: underline; }
+    .source-table a { color: #66ff88; text-decoration: underline; word-break: break-all; }
     .source-table a:hover { color: var(--white); }
 
-    /* ─── COPY BTN ───────────────────────────────── */
-    .copy-btn {
-      background: #020a02;
-      border: 1px solid var(--green);
-      color: var(--green);
-      padding: 4px 12px;
+    /* ─── PDF EXPORT & COPY BUTTONS ──────────────── */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pdf-btn, .copy-btn {
+      background: #0a1a00;
+      border: 1px solid var(--green-dim);
+      color: var(--green-dim);
+      padding: 5px 12px;
       font-family: inherit;
       font-size: 11px;
       cursor: pointer;
-      float: right;
       letter-spacing: 1px;
       transition: all 0.15s;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+    .copy-btn {
+      background: #020a02;
+      border-color: var(--green);
+      color: var(--green);
     }
     .copy-btn:hover { background: var(--green); color: #000; }
+    .pdf-btn:hover {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #000;
+    }
 
     /* ─── INPUT BAR ──────────────────────────────── */
     .input-bar {
       background: #000;
       border-top: 1px solid var(--green-dark);
-      padding: 12px 20px;
+      padding: 10px clamp(10px, 2.5vw, 20px);
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-shrink: 0;
       position: relative;
       z-index: 3;
@@ -577,7 +763,10 @@
       white-space: nowrap;
       text-shadow: 0 0 6px var(--green-glow);
       font-size: 14px;
+      flex-shrink: 0;
     }
+    .prompt-ps1-mobile { display: none; }
+    .btn-text-mobile { display: none; }
 
     .prompt-input {
       flex: 1;
@@ -588,6 +777,7 @@
       font-family: inherit;
       font-size: 14px;
       caret-color: var(--green);
+      min-width: 60px;
     }
     .prompt-input::placeholder { color: #003d12; }
 
@@ -596,11 +786,13 @@
       border: 1px solid var(--green-dim);
       color: var(--green);
       font-family: inherit;
-      padding: 7px 18px;
+      padding: 7px 16px;
       font-size: 12px;
       letter-spacing: 1px;
       cursor: pointer;
       transition: all 0.2s;
+      flex-shrink: 0;
+      border-radius: 2px;
     }
     .run-btn:hover:not(:disabled) {
       background: var(--green);
@@ -620,6 +812,8 @@
       display: none;
       letter-spacing: 1px;
       transition: all 0.2s;
+      flex-shrink: 0;
+      border-radius: 2px;
     }
     .stop-btn.visible { display: block; }
     .stop-btn:hover { background: var(--red); color: #fff; }
@@ -649,50 +843,142 @@
     /* Banner on startup */
     .banner-art {
       color: var(--green-dim);
-      font-size: 12px;
+      font-size: clamp(7.5px, 1.8vw, 12px);
       margin-bottom: 8px;
       white-space: pre;
       text-shadow: 0 0 4px rgba(0,255,65,0.2);
+      overflow-x: auto;
+      max-width: 100%;
+      line-height: 1.35;
+      scrollbar-width: none;
     }
+    .banner-art::-webkit-scrollbar { display: none; }
 
     /* Scrollbar for sidebar */
     .sidebar-scrollable {
       overflow-y: auto;
     }
 
-    /* ─── RESPONSIVE ─────────────────────────────── */
-    @media (max-width: 700px) {
-      .sidebar { display: none; }
-      .topbar-center { font-size: 16px; }
+    /* ─── RESPONSIVE BREAKPOINTS ─────────────────── */
+
+    /* Large Monitors & Workstations */
+    @media (min-width: 1200px) {
+      .sidebar { width: 240px; min-width: 240px; }
     }
 
-    /* ─── PDF EXPORT BUTTON ──────────────────────── */
-    .btn-row {
-      display: flex;
-      gap: 8px;
-      float: right;
-      margin-bottom: 2px;
+    /* Tablet and Medium Screens (<= 900px) */
+    @media (max-width: 900px) {
+      .topbar-center {
+        display: none;
+      }
+      .sidebar { width: 200px; min-width: 200px; }
     }
-    .pdf-btn {
-      background: #0a1a00;
-      border: 1px solid var(--green-dim);
-      color: var(--green-dim);
-      padding: 4px 12px;
-      font-family: inherit;
-      font-size: 11px;
-      cursor: pointer;
-      letter-spacing: 1px;
-      transition: all 0.15s;
+
+    /* Mobile & Tablet Portrait (<= 768px) */
+    @media (max-width: 768px) {
+      .mobile-drawer-btn {
+        display: inline-flex;
+      }
+      .tb-dots {
+        display: none;
+      }
+      .topbar-title {
+        font-size: 12px;
+        letter-spacing: 1px;
+      }
+      .topbar-right {
+        font-size: 10px;
+        gap: 8px;
+      }
+
+      /* Slide-out drawer on mobile */
+      .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: min(290px, 84vw);
+        min-width: unset;
+        z-index: 50;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 25px rgba(0, 0, 0, 0.9), 0 0 15px rgba(0, 255, 65, 0.15);
+        border-right: 1px solid var(--green-dim);
+      }
+      .sidebar.drawer-open {
+        transform: translateX(0);
+      }
+      .sidebar-close-btn {
+        display: inline-block;
+      }
+
+      /* Mobile toolbar layout */
+      .toolbar {
+        padding: 6px 12px;
+        gap: 8px;
+        justify-content: flex-start;
+      }
+      .presets-group {
+        width: 100%;
+        margin-left: 0;
+        padding: 4px 0 2px 0;
+        border-top: 1px dashed rgba(0, 59, 16, 0.8);
+      }
+      .tb-btn {
+        min-height: 30px;
+        padding: 4px 8px;
+      }
+
+      /* Prevent iOS input zoom with 16px font */
+      .prompt-input {
+        font-size: 16px;
+      }
+      .tb-select {
+        font-size: 12px;
+      }
     }
-    .pdf-btn:hover {
-      background: var(--amber);
-      border-color: var(--amber);
-      color: #000;
+
+    /* Small Mobile Screens (<= 600px) */
+    @media (max-width: 600px) {
+      .topbar {
+        padding: 6px 10px;
+      }
+      .prompt-ps1-desktop { display: none; }
+      .prompt-ps1-mobile  { display: inline; }
+      .btn-text-desktop   { display: none; }
+      .btn-text-mobile    { display: inline; font-size: 15px; font-weight: bold; }
+
+      .run-btn {
+        padding: 7px 12px;
+      }
+      .stop-btn {
+        padding: 7px 10px;
+      }
+
+      .report-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .btn-row {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .pdf-btn, .copy-btn {
+        flex: 1;
+        text-align: center;
+        padding: 6px 8px;
+      }
+    }
+
+    /* Extra-narrow phones (<= 380px) */
+    @media (max-width: 380px) {
+      .tool-label { font-size: 10px; }
+      .tb-btn { font-size: 10px; padding: 3px 6px; }
+      .topbar-title { font-size: 11px; }
     }
 
     /* ─── PRINT / PDF STYLES ────────────────────── */
     @media print {
-      /* Hide everything except the print container */
       body > *:not(#pdfPrintFrame) { display: none !important; }
       #pdfPrintFrame {
         display: block !important;
@@ -723,7 +1009,7 @@
     <div class="boot-progress-bar">
       <div class="boot-progress-fill" id="bootProgress"></div>
     </div>
-    <div class="boot-enter-msg" id="bootEnterMsg">[ PRESS ENTER OR CLICK TO LAUNCH ]</div>
+    <div class="boot-enter-msg" id="bootEnterMsg">[ TAP ANYWHERE OR PRESS ENTER TO LAUNCH ]</div>
   </div>
 </div>
 
@@ -733,6 +1019,11 @@
   <!-- Top Bar -->
   <div class="topbar">
     <div class="topbar-left">
+      <button class="mobile-drawer-btn" id="mobileDrawerBtn" onclick="toggleSidebarDrawer()" aria-label="Toggle session drawer">
+        <span>☰</span>
+        <span>LOGS</span>
+        <span class="drawer-badge" id="sessionBadge">0</span>
+      </button>
       <div class="tb-dots">
         <span class="tb-dot"></span>
         <span class="tb-dot"></span>
@@ -780,9 +1071,12 @@
   <!-- Content Area -->
   <div class="content-area">
 
-    <!-- Left Sidebar -->
-    <div class="sidebar">
-      <div class="sidebar-header">// SESSION LOG</div>
+    <!-- Left Sidebar / Mobile Drawer -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span>// SESSION LOG</span>
+        <button class="sidebar-close-btn" onclick="closeSidebarDrawer()" aria-label="Close session drawer">✕</button>
+      </div>
       <div class="session-list" id="sessionList">
         <div style="padding: 20px 14px; font-size: 11px; color: #003a10;">No sessions yet.</div>
       </div>
@@ -791,6 +1085,9 @@
         REFRESH CLEARS HISTORY
       </div>
     </div>
+
+    <!-- Mobile Drawer Backdrop -->
+    <div id="sidebarBackdrop" onclick="closeSidebarDrawer()"></div>
 
     <!-- Main Output Pane -->
     <div class="output-pane">
@@ -801,11 +1098,17 @@
 
       <!-- Input Bar -->
       <div class="input-bar">
-        <span class="prompt-ps1">researcher@langgraph:~$</span>
+        <span class="prompt-ps1">
+          <span class="prompt-ps1-desktop">researcher@langgraph:~$</span>
+          <span class="prompt-ps1-mobile">~$</span>
+        </span>
         <input type="text" id="queryInput" class="prompt-input"
                placeholder="type your research query and press enter..."
                autocomplete="off" autofocus>
-        <button class="run-btn" id="runBtn" onclick="submitQuery()">EXECUTE ⏎</button>
+        <button class="run-btn" id="runBtn" onclick="submitQuery()">
+          <span class="btn-text-desktop">EXECUTE ⏎</span>
+          <span class="btn-text-mobile">⏎</span>
+        </button>
         <button class="stop-btn" id="stopBtn" onclick="stopQuery()">■ STOP</button>
       </div>
     </div>
@@ -938,12 +1241,14 @@
       typeWelcomeBanner();
       document.removeEventListener('keydown', onKey);
       overlay.removeEventListener('click', launch);
+      overlay.removeEventListener('touchstart', launch);
       setTimeout(() => overlay.remove(), 900);
     }
 
     function onKey(e) { if (e.key === 'Enter' || e.key === ' ') launch(); }
     document.addEventListener('keydown', onKey);
     overlay.addEventListener('click', launch);
+    overlay.addEventListener('touchstart', launch, { passive: true });
   }
 
   runBoot();
@@ -967,9 +1272,23 @@
   }
 
   /* ═══════════════════════════════════════════════════════
-   * SESSION HISTORY
+   * SESSION HISTORY & DRAWER
    * ══════════════════════════════════════════════════════= */
   const sessions = [];
+
+  function toggleSidebarDrawer() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar) sidebar.classList.toggle('drawer-open');
+    if (backdrop) backdrop.classList.toggle('active');
+  }
+
+  function closeSidebarDrawer() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar) sidebar.classList.remove('drawer-open');
+    if (backdrop) backdrop.classList.remove('active');
+  }
 
   function addSession(question) {
     const sid = Date.now();
@@ -980,6 +1299,8 @@
 
   function renderSessions() {
     const list = document.getElementById('sessionList');
+    const badge = document.getElementById('sessionBadge');
+    if (badge) badge.textContent = sessions.length;
     list.innerHTML = '';
     if (sessions.length === 0) {
       list.innerHTML = '<div style="padding: 20px 14px; font-size:11px; color:#003a10;">No sessions yet.</div>';
@@ -989,6 +1310,10 @@
       const el = document.createElement('div');
       el.className = 'session-item' + (i === 0 ? ' active' : '');
       el.innerHTML = `${s.question.length > 30 ? s.question.slice(0,28)+'...' : s.question}<span class="s-time">${s.time}</span>`;
+      el.onclick = () => {
+        setQuery(s.question);
+        closeSidebarDrawer();
+      };
       list.appendChild(el);
     });
   }
@@ -1120,7 +1445,7 @@
     const t = getTimeStr();
     switch (event.type) {
       case 'step':
-        appendLine(`<div class="log-step">▶  STEP ${String(event.step).padStart(2,'0')} / ${event.max_steps}  ────────────────────────────────────────────────</div>`);
+        appendLine(`<div class="log-step"><span>▶  STEP ${String(event.step).padStart(2,'0')} / ${event.max_steps}</span></div>`);
         break;
 
       case 'decision': {
@@ -1271,12 +1596,14 @@
 
     let reportHtml = `
       <div class="report-box">
-        <div class="btn-row">
-          <button class="pdf-btn" onclick="exportPDF()">&#128196; EXPORT PDF</button>
-          <button class="copy-btn" onclick="copyReport()">[ COPY MARKDOWN ]</button>
-        </div>
-        <div style="font-weight:700;color:var(--green);margin-bottom:16px;letter-spacing:2px;font-size:16px;text-shadow:0 0 8px var(--green-glow);clear:both;">
-          &#9556;&#9552; FINAL RESEARCH REPORT &#9559;
+        <div class="report-header-row">
+          <div class="report-title">
+            &#9556;&#9552; FINAL RESEARCH REPORT &#9559;
+          </div>
+          <div class="btn-row">
+            <button class="pdf-btn" onclick="exportPDF()">&#128196; EXPORT PDF</button>
+            <button class="copy-btn" onclick="copyReport()">[ COPY MARKDOWN ]</button>
+          </div>
         </div>
         <div class="report-content">${renderedAnswer}</div>
       </div>`;
@@ -1285,10 +1612,10 @@
       let rows = '';
       for (const [sid, s] of Object.entries(sources)) {
         const isCited = cited.includes(sid);
-        const displayUrl = s.url.length > 65 ? s.url.slice(0, 63) + '…' : s.url;
+        const displayUrl = s.url.length > 60 ? s.url.slice(0, 58) + '…' : s.url;
         rows += `<tr>
-          <td style="font-weight:700;color:var(--green);">${sid}</td>
-          <td style="color:${isCited?'var(--green)':'#005010'}">${isCited?'✓ YES':'—'}</td>
+          <td style="font-weight:700;color:var(--green);white-space:nowrap;">${sid}</td>
+          <td style="color:${isCited?'var(--green)':'#005010'};white-space:nowrap;">${isCited?'✓ YES':'—'}</td>
           <td style="color:#ccffcc;">${escapeHtml(s.title||'Untitled')}</td>
           <td><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(displayUrl)}</a></td>
         </tr>`;
@@ -1296,10 +1623,12 @@
       reportHtml += `
         <div style="margin-top:14px;">
           <div style="font-size:13px;color:var(--green);letter-spacing:2px;margin-bottom:8px;font-weight:700;">╔═ VERIFIED SOURCES ═╗</div>
-          <table class="source-table">
-            <thead><tr><th>ID</th><th>CITED?</th><th>TITLE</th><th>URL</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="source-table">
+              <thead><tr><th>ID</th><th>CITED?</th><th>TITLE</th><th>URL</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
         </div>`;
     }
 
