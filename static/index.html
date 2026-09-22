@@ -1491,6 +1491,14 @@
         renderFinalReport(event.final_answer, event.citations, event.sources, event.steps, event.max_steps, event.status);
         break;
 
+      case 'llm_info':
+        appendLine(`<span class="log-time">${t}</span><span style="color:var(--cyan);">[LLM]</span> Provider: <strong>${escapeHtml(event.provider)}</strong> · Model: <strong style="color:var(--green);">${escapeHtml(event.model)}</strong>`);
+        break;
+
+      case 'llm_error':
+        appendLine(`<span class="log-time">${t}</span><span class="log-fail">[LLM ERROR] attempt ${event.attempt}:</span> <span style="color:#ff8888;font-size:12px;">${escapeHtml(event.error)}</span>`);
+        break;
+
       case 'error':
         appendLine(`<span class="log-time">${t}</span><span class="log-fail">[FATAL] ${escapeHtml(event.message)}</span>`);
         break;

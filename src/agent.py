@@ -291,12 +291,14 @@ def build_research_agent(
                 else _DEFAULT_GROQ_MODEL
             )
             logger.info(f"Using Groq LLM provider with model: {model}")
+            if on_event:
+                on_event({"type": "llm_info", "provider": "groq", "model": model})
             llm = ChatOpenAI(
                 model=model,
                 temperature=cfg.temperature,
                 api_key=cfg.groq_api_key,
                 base_url="https://api.groq.com/openai/v1",
-                max_retries=5,
+                max_retries=2,
             )
         elif cfg.llm_provider == "openai" and cfg.openai_api_key:
             from langchain_openai import ChatOpenAI
@@ -415,7 +417,14 @@ def build_research_agent(
                 if ("429" in err_msg or "rate_limit" in err_msg.lower()) and attempt < 2:
                     time.sleep(2.0)
                     continue
-                logger.error(f"Reasoning parsing error (attempt {attempt + 1}): {e}")
+                logger.error(f"Reasoning error (attempt {attempt + 1}): {e}")
+                if on_event:
+                    on_event({
+                        "type": "llm_error",
+                        "attempt": attempt + 1,
+                        "error": err_msg[:300],
+                    })
+                break  # don't retry on non-rate-limit errors
 
         # Fallback if data is still None after all attempts (LLM completely failed / returned null)
         if not data or not isinstance(data, dict):
