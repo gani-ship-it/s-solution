@@ -282,7 +282,14 @@ def build_research_agent(
     if llm is None:
         if cfg.llm_provider == "groq" or (cfg.groq_api_key and not cfg.openai_api_key):
             from langchain_openai import ChatOpenAI
-            model = cfg.model_name if cfg.model_name not in ("gpt-4o-mini", "gpt-4o") else "llama-3.1-8b-instant"
+            # Map any OpenAI model names to a current, valid Groq model
+            _OPENAI_PREFIXES = ("gpt-", "o1-", "o3-", "o4-", "text-davinci")
+            _DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+            model = (
+                cfg.model_name
+                if not any(cfg.model_name.startswith(p) for p in _OPENAI_PREFIXES)
+                else _DEFAULT_GROQ_MODEL
+            )
             logger.info(f"Using Groq LLM provider with model: {model}")
             llm = ChatOpenAI(
                 model=model,
