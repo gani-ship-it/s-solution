@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "framework": null,
   "functions": {
     "api/index.py": {
       "includeFiles": "{src/**,static/**,web_app.py,pyproject.toml}",

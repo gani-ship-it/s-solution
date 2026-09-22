@@ -12,16 +12,19 @@ for p in [str(ROOT_DIR), str(API_DIR), "/var/task"]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
+# --- Top-level FastAPI app instance (required by Vercel's static analyzer) ---
+from fastapi import FastAPI  # noqa: E402
+
+app = FastAPI(title="LangGraph Research Agent Terminal")
+
+# Override with the real fully-configured app from web_app if import succeeds
 try:
-    from web_app import app
+    from web_app import app  # noqa: F811
 except Exception:
-    from fastapi import FastAPI
     from fastapi.responses import HTMLResponse
 
     err_trace = traceback.format_exc()
     print("FATAL ERROR DURING APP INITIALIZATION:\n", err_trace)
-
-    app = FastAPI(title="Initialization Error")
 
     @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"])
     async def catch_all(full_path: str = ""):
