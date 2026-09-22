@@ -309,6 +309,7 @@ def build_research_agent(
                     api_key=cfg.groq_api_key,
                     base_url="https://api.groq.com/openai/v1",
                     max_retries=2,
+                    max_tokens=2048,
                 )
 
             # Auto-fallback: if the configured model returns 404, try the chain
@@ -442,6 +443,16 @@ def build_research_agent(
             try:
                 resp = llm.invoke(messages)
                 raw = resp.content if hasattr(resp, "content") else str(resp)
+                # Detect truncated output (model hit max_tokens mid-JSON)
+                finish_reason = getattr(resp, "response_metadata", {}).get("finish_reason", "")
+                if not raw.strip():
+                    raise ValueError(f"LLM returned empty content (finish_reason={finish_reason!r})")
+                if finish_reason == "length":
+                    logger.warning("LLM response truncated (finish_reason=length) — attempting JSON recovery")
+                    if on_event:
+                        on_event({"type": "llm_error", "attempt": attempt + 1, "error": "Response truncated mid-JSON (finish_reason=length). Retrying with shorter context."})
+                    # Try to patch truncated JSON by closing any open braces
+                    raw = raw.rstrip().rstrip(",") + '\n  "final_answer": null\n}'
                 json_match = re.search(r"\{.*\}", raw, re.DOTALL)
                 if not json_match:
                     raise ValueError(f"No JSON found in LLM output: {raw[:200]}")
