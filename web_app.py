@@ -26,6 +26,7 @@ def find_static_dir() -> Path:
     candidates = [
         Path(__file__).resolve().parent / "static",
         Path(__file__).resolve().parent.parent / "static",
+        Path("/var/task/static"),
         Path.cwd() / "static",
     ]
     for c in candidates:
